@@ -9,16 +9,21 @@ const cookieParser = require('cookie-parser');
 
 connectDB();
 app.use(cors(
-    {origin:'http://localhost:5173',methods:['GET','POST','PUT','DELETE'],credentials:true}  
+    {
+        origin: [
+            "http://localhost:5173",
+            "https://todoexellence.netlify.app"
+        ], methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true
+    }
 ));
 app.use(express.json());
 app.use(cookieParser());
 
 
-app.use('/api/users',require('./router/userRouter.js'));
-app.use('/api/todos',require('./router/todoRoutes.js'));
+app.use('/api/users', require('./router/userRouter.js'));
+app.use('/api/todos', require('./router/todoRoutes.js'));
 
-app.get('/',(req,res)=>{
+app.get('/', (req, res) => {
     res.send('server is running');
 })
 

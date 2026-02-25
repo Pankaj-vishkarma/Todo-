@@ -48,7 +48,7 @@ const login = async (req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: 'User not found'
+                message: "User not found"
             });
         }
 
@@ -57,24 +57,27 @@ const login = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid credentials'
+                message: "Invalid credentials"
             });
+        }
+
+        if (!process.env.JWT_SECRET) {
+            throw new Error("JWT_SECRET is missing in .env");
         }
 
         const token = jwt.sign(
             { id: user._id },
-            process.env.SECRET_KEY,
-            { expiresIn: '1h' }
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
         );
 
         res.status(200).json({
             success: true,
-            message: 'User logged in successfully',
             token
         });
 
     } catch (error) {
-        console.log(error);
+        console.log("LOGIN ERROR:", error.message);
         res.status(500).json({
             success: false,
             message: error.message

@@ -7,9 +7,12 @@ import Dashboard from "./pages/Dashboard";
 import AddTodo from "./pages/AddTodo";
 import EditTodo from "./pages/EditTodo";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ViewTodo from "./pages/ViewTodo";
 
 const App = () => {
   return (
+
+    
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
@@ -33,6 +36,15 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+         path="/view/:id"
+         element={
+            <ProtectedRoute>
+              <ViewTodo />
+            </ProtectedRoute>
+          } 
+         />
 
         <Route
           path="/edit/:id"

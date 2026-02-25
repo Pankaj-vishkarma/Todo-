@@ -1,70 +1,175 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
-import TodoItem from "../components/TodoItem";
+import React, { useEffect, useState, useMemo } from "react";
+import axiosInstance from "../utils/axiosInstance";
+import { Link } from "react-router-dom";
+import { Plus, Eye, Pencil, Trash2, LogOut } from "lucide-react";
 
 const Dashboard = () => {
   const [todos, setTodos] = useState([]);
-  const navigate = useNavigate();
+  const [filter, setFilter] = useState("all");
 
   const fetchTodos = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/todos");
-      setTodos(res.data);
-    } catch (error) {
-      console.log(error);
-    }
+    const res = await axiosInstance.get("/api/todos");
+    setTodos(res.data);
   };
 
   useEffect(() => {
     fetchTodos();
   }, []);
 
-  const handleDelete = async (id) => {
-    await axios.delete(`http://localhost:5000/api/todos/${id}`);
-    fetchTodos();
+  const handleLogout = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user"); 
+  window.location.href = "/";
+};
+
+  const handleToggle = async (id, currentStatus) => {
+    try {
+      const res = await axiosInstance.put(
+  `/api/todos/${id}`,
+  { completed: !currentStatus }
+);
+
+      setTodos((prev) =>
+        prev.map((todo) =>
+          todo._id === id ? { ...todo, completed: res.data.completed } : todo
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update status");
+    }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    navigate("/");
+  const handleDelete = async (id) => {
+    await axiosInstance.delete(`/api/todos/${id}`);
+    setTodos((prev) => prev.filter((t) => t._id !== id));
   };
+
+  const filteredTodos = useMemo(() => {
+    if (filter === "completed")
+      return todos.filter((t) => t.completed);
+    if (filter === "pending")
+      return todos.filter((t) => !t.completed);
+    return todos;
+  }, [todos, filter]);
 
   return (
-    <div className="container-fluid bg-light min-vh-100">
-      
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center p-3 bg-white shadow-sm">
-        <h4 className="mb-0 fw-bold">My Dashboard</h4>
-        <div>
-          <Link to="/add" className="btn btn-primary me-2">
-            + Add Todo
-          </Link>
-          <button onClick={handleLogout} className="btn btn-outline-danger">
-            Logout
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-200 py-10">
 
-      {/* Todo List */}
-      <div className="container py-4">
-        <div className="row">
-          {todos.length === 0 ? (
-            <div className="text-center mt-5">
-              <h5 className="text-muted">No Todos Found</h5>
-            </div>
-          ) : (
-            todos.map((todo) => (
-              <div key={todo._id} className="col-12 col-md-6 col-lg-4 mb-4">
-                <TodoItem
-                  todo={todo}
-                  onDelete={handleDelete}
-                />
-              </div>
-            ))
-          )}
+      {/* Title */}
+      <h1 className="text-center text-4xl font-bold underline mb-8">
+        Todo App
+      </h1>
+
+      {/* Filter Section */}
+      <div className="max-w-6xl mx-auto flex justify-between items-center px-6 mb-10">
+
+  {/* Left Side - Filters */}
+  <div className="flex items-center gap-6">
+
+    <Link
+      to="/add"
+      className="flex items-center gap-2 bg-green-500 text-white px-5 py-2 rounded-full shadow-md hover:bg-green-600 transition"
+    >
+      <Plus size={18} />
+      New
+    </Link>
+
+    <button
+      onClick={() => setFilter("all")}
+      className={`font-semibold ${
+        filter === "all" ? "text-red-400" : "text-black"
+      }`}
+    >
+      All
+    </button>
+
+    <button
+      onClick={() => setFilter("pending")}
+      className={`font-semibold ${
+        filter === "pending" ? "text-red-400" : "text-black"
+      }`}
+    >
+      Pending
+    </button>
+
+    <button
+      onClick={() => setFilter("completed")}
+      className={`font-semibold ${
+        filter === "completed" ? "text-red-400" : "text-black"
+      }`}
+    >
+      Completed
+    </button>
+
+  </div>
+
+  {/* Right Side - Logout */}
+  <button
+    onClick={handleLogout}
+    className="flex items-center gap-2 bg-red-500 text-white px-5 py-2 rounded-full shadow-md hover:bg-red-600 transition"
+  >
+    <LogOut size={18} />
+    Logout
+  </button>
+
+</div>
+
+      {/* If No Todo */}
+      {filteredTodos.length === 0 ? (
+        <div className="text-center mt-20 text-lg">
+          No Todo Found.
         </div>
-      </div>
+      ) : (
+        /* Todo Grid */
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 px-6">
+
+          {filteredTodos.map((todo) => (
+            <div
+              key={todo._id}
+              className="bg-white border border-gray-400 rounded-lg p-4 flex justify-between items-center shadow-sm hover:shadow-md transition"
+            >
+              {/* Left Side */}
+              <div className="flex items-center gap-4">
+                <input
+                  type="checkbox"
+                  checked={todo.completed || false}
+                  onChange={() => handleToggle(todo._id, todo.completed)}
+                  className="w-5 h-5 cursor-pointer"
+                />
+                <span className="text-lg font-medium">
+                  {todo.title}
+                </span>
+              </div>
+
+              {/* Right Icons */}
+              <div className="flex gap-3">
+                <Link
+                  to={`/view/${todo._id}`}
+                  className="bg-blue-600 p-2 rounded-md text-white hover:opacity-80 transition"
+                >
+                  <Eye size={18} />
+                </Link>
+
+                <Link
+                  to={`/edit/${todo._id}`}
+                  className="bg-yellow-500 p-2 rounded-md text-white hover:opacity-80 transition"
+                >
+                  <Pencil size={18} />
+                </Link>
+
+                <button
+                  onClick={() => handleDelete(todo._id)}
+                  className="bg-red-500 p-2 rounded-md text-white hover:opacity-80 transition"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </div>
+          ))}
+
+        </div>
+      )}
+
     </div>
   );
 };

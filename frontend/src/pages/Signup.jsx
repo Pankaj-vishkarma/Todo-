@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 import { useNavigate, Link } from "react-router-dom";
+import { User, Mail, Lock, CheckCircle, UserPlus } from "lucide-react";
 
 const Signup = () => {
   const [name, setName] = useState("");
@@ -16,20 +17,29 @@ const Signup = () => {
 
   const handleSignup = async (e) => {
     e.preventDefault();
+
     setError("");
     setSuccess("");
 
-  
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
+    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+      setError("Please fill all fields.");
       return;
     }
 
-    setLoading(true);
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
 
     try {
-      const res = await axios.post(
-        "http://localhost:5000/api/users/register",
+      setLoading(true);
+
+      const res = await axiosInstance.post(
+        "/api/users/register",
         {
           name,
           email,
@@ -38,9 +48,8 @@ const Signup = () => {
         }
       );
 
-      setSuccess(res.data.message || "Signup Successful");
+      setSuccess(res.data.message || "Signup successful! Redirecting...");
 
-     
       setTimeout(() => {
         navigate("/");
       }, 2000);
@@ -57,100 +66,111 @@ const Signup = () => {
   };
 
   return (
-    <div className="container-fluid bg-light min-vh-100 d-flex align-items-center">
-      <div className="row w-100 justify-content-center">
-        <div className="col-11 col-sm-8 col-md-6 col-lg-4">
-          <div className="card shadow-lg border-0 rounded-4 p-4">
-            <h3 className="text-center mb-4 fw-bold">Create Account</h3>
+  <div className="min-h-screen bg-gray-200 py-10">
 
-           
-            {error && (
-              <div className="alert alert-danger text-center py-2">
-                {error}
-              </div>
-            )}
+    {/* Title */}
+    <h1 className="text-center text-4xl font-bold underline mb-8">
+      Todo App
+    </h1>
 
-           
-            {success && (
-              <div className="alert alert-success text-center py-2">
-                {success}
-              </div>
-            )}
+    {/* Card */}
+    <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-10 border border-gray-200">
 
-            <form onSubmit={handleSignup}>
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Full Name</label>
-                <input
-                  type="text"
-                  className="form-control form-control-lg"
-                  placeholder="Enter your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
+      <h2 className="text-2xl font-semibold text-center mb-8">
+        Create Your Account
+      </h2>
 
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Email address</label>
-                <input
-                  type="email"
-                  className="form-control form-control-lg"
-                  placeholder="Enter email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label fw-semibold">Password</label>
-                <input
-                  type="password"
-                  className="form-control form-control-lg"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label fw-semibold">
-                  Confirm Password
-                </label>
-                <input
-                  type="password"
-                  className="form-control form-control-lg"
-                  placeholder="Confirm password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="btn btn-success btn-lg w-100 rounded-3"
-                disabled={loading}
-              >
-                {loading ? "Creating Account..." : "Signup"}
-              </button>
-            </form>
-
-            <p className="text-center mt-4 mb-0">
-              Already have an account?{" "}
-              <Link
-                to="/"
-                className="text-primary fw-semibold text-decoration-none"
-              >
-                Login
-              </Link>
-            </p>
-          </div>
+      {error && (
+        <div className="bg-red-100 text-red-600 text-sm p-3 rounded-lg mb-6 text-center">
+          {error}
         </div>
-      </div>
+      )}
+
+      {success && (
+        <div className="bg-green-100 text-green-600 text-sm p-3 rounded-lg mb-6 text-center">
+          {success}
+        </div>
+      )}
+
+      <form onSubmit={handleSignup} className="space-y-6">
+
+        {/* Name */}
+        <div className="relative">
+          <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full border border-gray-300 rounded-xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          />
+        </div>
+
+        {/* Email */}
+        <div className="relative">
+          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border border-gray-300 rounded-xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          />
+        </div>
+
+        {/* Password */}
+        <div className="relative">
+          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border border-gray-300 rounded-xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          />
+        </div>
+
+        {/* Confirm Password */}
+        <div className="relative">
+          <CheckCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full border border-gray-300 rounded-xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
+          />
+        </div>
+
+        {/* Signup Button */}
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl text-white font-semibold transition ${
+            loading
+              ? "bg-indigo-400 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700"
+          }`}
+        >
+          <UserPlus size={20} />
+          {loading ? "Creating Account..." : "Signup"}
+        </button>
+
+      </form>
+
+      <p className="text-center text-sm text-gray-600 mt-8">
+        Already have an account?{" "}
+        <Link
+          to="/"
+          className="text-indigo-600 font-semibold hover:underline"
+        >
+          Login
+        </Link>
+      </p>
+
     </div>
-  );
+  </div>
+);
 };
 
 export default Signup;

@@ -10,19 +10,44 @@ const EditTodo = () => {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("medium");
+  const [category, setCategory] = useState("general");
+  const [tags, setTags] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [status, setStatus] = useState("pending");
+
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  /* ================= FETCH TODO (UNCHANGED) ================= */
+  /* ================= FETCH TODO ================= */
   useEffect(() => {
     const fetchTodo = async () => {
       try {
         setLoading(true);
+        setErrorMessage("");
+
         const res = await axiosInstance.get(`/api/todos/${id}`);
-        setTitle(res.data.title);
-        setDescription(res.data.description || "");
+        const todo = res?.data?.data;
+
+        if (!todo) {
+          setErrorMessage("Todo not found.");
+          return;
+        }
+
+        setTitle(todo.title || "");
+        setDescription(todo.description || "");
+        setPriority(todo.priority || "medium");
+        setCategory(todo.category || "general");
+        setStatus(todo.status || "pending");
+        setDueDate(todo.dueDate ? todo.dueDate.split("T")[0] : "");
+        setTags(
+          todo.tags && todo.tags.length > 0
+            ? todo.tags.join(", ")
+            : ""
+        );
       } catch (error) {
+        console.error(error);
         setErrorMessage("Failed to load todo.");
       } finally {
         setLoading(false);
@@ -32,7 +57,7 @@ const EditTodo = () => {
     fetchTodo();
   }, [id]);
 
-  /* ================= UPDATE LOGIC (UNCHANGED) ================= */
+  /* ================= UPDATE LOGIC ================= */
   const handleUpdate = async (e) => {
     e.preventDefault();
 
@@ -46,92 +71,150 @@ const EditTodo = () => {
       setErrorMessage("");
 
       await axiosInstance.put(`/api/todos/${id}`, {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        category: category.trim(),
+        status,
+        dueDate: dueDate || null,
+        tags: tags
+          ? tags.split(",").map((tag) => tag.trim())
+          : [],
       });
 
       navigate("/dashboard");
     } catch (error) {
-      setErrorMessage("Failed to update todo.");
+      console.error(error);
+      setErrorMessage(
+        error?.response?.data?.message ||
+          "Failed to update todo."
+      );
     } finally {
       setUpdating(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-black overflow-x-hidden">
-
-      {/* MATRIX BACKGROUND */}
+    <div className="relative h-screen bg-black overflow-hidden">
       <MatrixBackground />
 
-      {/* CONTENT */}
-      <div className="relative z-20 min-h-screen flex items-center justify-center px-4 sm:px-6 md:px-10 py-10">
+      <div className="relative z-20 h-full flex items-center justify-center px-4">
+        <div className="w-full max-w-4xl bg-black/70 backdrop-blur-xl border border-green-500/40 rounded-3xl p-5 md:p-6 shadow-[0_0_40px_rgba(0,255,150,0.2)]">
 
-        <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl border border-green-500/40 rounded-3xl shadow-[0_0_40px_rgba(0,255,150,0.2)] p-6 sm:p-8 md:p-10 transition-all duration-300">
-
-          <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold text-green-400 font-mono mb-6 tracking-widest">
+          <h1 className="text-center text-lg sm:text-xl md:text-2xl font-bold text-green-400 font-mono mb-4 tracking-widest">
             UPDATE TASK
           </h1>
 
           {loading ? (
-            <div className="text-center py-10 text-green-400 font-mono">
+            <div className="text-center py-6 text-green-400 font-mono text-sm">
               LOADING...
             </div>
           ) : (
             <>
               {errorMessage && (
-                <div className="bg-red-900/40 text-red-400 p-3 rounded-xl mb-6 text-sm border border-red-500/40 font-mono">
+                <div className="bg-red-900/40 text-red-400 p-2 rounded-lg mb-4 text-xs sm:text-sm border border-red-500/40 font-mono text-center">
                   {errorMessage}
                 </div>
               )}
 
-              <form onSubmit={handleUpdate} className="space-y-6">
+              <form
+                onSubmit={handleUpdate}
+                className="grid grid-cols-1 md:grid-cols-2 gap-3"
+              >
 
+                {/* TITLE */}
                 <input
                   type="text"
-                  placeholder="Enter Title"
+                  placeholder="Title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-black/50 border border-green-500/40 text-green-300 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 font-mono"
+                  className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
                 />
 
+                {/* CATEGORY */}
+                <input
+                  type="text"
+                  placeholder="Category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                />
+
+                {/* DESCRIPTION */}
                 <textarea
-                  rows="6"
-                  placeholder="Enter Description..."
+                  rows="3"
+                  placeholder="Description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-black/50 border border-green-500/40 text-green-300 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 font-mono resize-none"
+                  className="md:col-span-2 bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono resize-none"
                 ></textarea>
 
-                <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8 pt-4">
+                {/* PRIORITY */}
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
 
+                {/* STATUS */}
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+
+                {/* DUE DATE */}
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                />
+
+                {/* TAGS */}
+                <input
+                  type="text"
+                  placeholder="Tags (comma separated)"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  className="md:col-span-2 bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+                />
+
+                {/* BUTTONS */}
+                <div className="md:col-span-2 flex gap-3 mt-2">
                   <button
                     type="submit"
                     disabled={updating}
-                    className={`flex items-center justify-center gap-3 px-6 sm:px-10 py-3 sm:py-4 text-base sm:text-lg rounded-xl font-semibold transition-all duration-300 ${
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm rounded-lg font-semibold transition ${
                       updating
-                        ? "bg-green-800 cursor-not-allowed text-green-200"
-                        : "bg-green-500 text-black hover:bg-green-400 active:scale-[0.98] shadow-[0_0_20px_rgba(0,255,150,0.6)]"
+                        ? "bg-green-800 text-green-200"
+                        : "bg-green-500 text-black hover:bg-green-400"
                     }`}
                   >
-                    <Plus size={20} />
-                    {updating ? "UPDATING..." : "UPDATE TASK"}
+                    <Plus size={16} />
+                    {updating ? "UPDATING..." : "UPDATE"}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => navigate("/dashboard")}
-                    className="px-6 sm:px-10 py-3 sm:py-4 text-base sm:text-lg rounded-xl bg-gray-800 hover:bg-gray-700 text-green-400 font-semibold border border-green-500/40 font-mono transition-all duration-300"
+                    className="flex-1 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-green-400 border border-green-500/40 font-mono transition"
                   >
                     CANCEL
                   </button>
-
                 </div>
 
               </form>
             </>
           )}
-
         </div>
       </div>
     </div>

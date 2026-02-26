@@ -6,19 +6,22 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import AddTodo from "./pages/AddTodo";
 import EditTodo from "./pages/EditTodo";
-import ProtectedRoute from "./components/ProtectedRoute";
 import ViewTodo from "./pages/ViewTodo";
+import Analytics from "./pages/Analytics";
+import NotFound from "./pages/NotFound";
+
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* Public Full Screen Pages */}
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Protected Full Screen Pages */}
+        {/* PROTECTED ROUTES */}
         <Route
           path="/dashboard"
           element={
@@ -54,6 +57,18 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 FALLBACK */}
+        <Route path="*" element={<NotFound />} />
 
       </Routes>
     </BrowserRouter>

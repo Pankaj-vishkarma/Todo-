@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const authMiddleware = require("../middleware/authMiddleware");
 
 const {
@@ -7,13 +8,77 @@ const {
   getTodos,
   getSingleTodo,
   updateTodo,
-  deleteTodo
+  deleteTodo,
+  permanentlyDeleteTodo,
 } = require("../controller/todoCtrl");
 
-router.post("/", authMiddleware, createTodo);
+const {
+  validateCreateTodo,
+  validateUpdateTodo,
+  validateTodoId,
+} = require("../middleware/validateTodo");
+
+const handleValidation = require("../middleware/handleValidation");
+
+/* ================================
+   CREATE TODO
+================================ */
+router.post(
+  "/",
+  authMiddleware,
+  validateCreateTodo,
+  handleValidation,
+  createTodo
+);
+
+/* ================================
+   GET ALL TODOS (Filter + Pagination)
+================================ */
 router.get("/", authMiddleware, getTodos);
-router.get("/:id", authMiddleware, getSingleTodo);
-router.put("/:id", authMiddleware, updateTodo);
-router.delete("/:id", authMiddleware, deleteTodo);
+
+/* ================================
+   HARD DELETE (Permanent)
+   (Specific route should come first)
+================================ */
+router.delete(
+  "/permanent/:id",
+  authMiddleware,
+  validateTodoId,
+  handleValidation,
+  permanentlyDeleteTodo
+);
+
+/* ================================
+   GET SINGLE TODO
+================================ */
+router.get(
+  "/:id",
+  authMiddleware,
+  validateTodoId,
+  handleValidation,
+  getSingleTodo
+);
+
+/* ================================
+   UPDATE TODO
+================================ */
+router.put(
+  "/:id",
+  authMiddleware,
+  validateUpdateTodo,
+  handleValidation,
+  updateTodo
+);
+
+/* ================================
+   SOFT DELETE (Archive)
+================================ */
+router.delete(
+  "/:id",
+  authMiddleware,
+  validateTodoId,
+  handleValidation,
+  deleteTodo
+);
 
 module.exports = router;

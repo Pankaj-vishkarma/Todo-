@@ -1,139 +1,266 @@
 const Todo = require("../models/todomodel");
 const mongoose = require("mongoose");
 
-const createTodo = async (req, res) => {
+/* ================================
+   CREATE TODO
+================================ */
+const createTodo = async (req, res, next) => {
   try {
-    const { title, description } = req.body;
+    const {
+      title,
+      description,
+      priority,
+      category,
+      tags,
+      dueDate,
+      reminder,
+      status,
+    } = req.body;
 
     if (!title || !title.trim()) {
-      return res.status(400).json({
-        message: "Title is required"
-      });
+      return res.status(400).json({ message: "Title is required" });
     }
 
     const todo = await Todo.create({
-      title: title.trim(),
-      description: description?.trim() || "",
-      user: req.user.id
+  title: title.trim(),
+  description: description?.trim() || "",
+  priority,
+  category,
+  tags: Array.isArray(tags) ? tags : [],
+  dueDate: dueDate ? new Date(dueDate) : undefined,
+  reminder: reminder ? new Date(reminder) : undefined,
+  status,
+  user: req.user.id,
+});
+
+    res.status(201).json({
+      success: true,
+      data: todo,
     });
-
-    res.status(201).json(todo);
-
   } catch (error) {
-    res.status(500).json({
-      message: error.message
-    });
-  }
+  console.error("CREATE TODO ERROR:", error);
+  return res.status(500).json({
+    success: false,
+    message: error.message || "Internal Server Error",
+  });
+}
 };
 
-
-const getTodos = async (req, res) => {
+/* ================================
+   GET TODOS (With Filter, Search, Pagination)
+================================ */
+const getTodos = async (req, res, next) => {
   try {
-    const todos = await Todo.find({ user: req.user.id })
-      .sort({ createdAt: -1 });
+    let {
+      status,
+      priority,
+      category,
+      search,
+      page = 1,
+      limit = 10,
+      archived,
+    } = req.query;
 
-    res.status(200).json(todos);
+    // Convert page & limit safely
+    const pageNum = Math.max(Number(page) || 1, 1);
+    const limitNum = Math.max(Number(limit) || 10, 1);
 
-  } catch (error) {
-    res.status(500).json({
-      message: error.message
+    const query = { user: req.user.id };
+
+    // Archive filter
+    if (archived === "true") {
+      query.isArchived = true;
+    } else {
+      query.isArchived = false;
+    }
+
+    // Filters
+    if (status && ["pending", "in-progress", "completed"].includes(status)) {
+      query.status = status;
+    }
+
+    if (priority && ["low", "medium", "high"].includes(priority)) {
+      query.priority = priority;
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    // Safe search (no text index dependency)
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const skip = (pageNum - 1) * limitNum;
+
+    const todos = await Todo.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Todo.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      data: todos,
     });
+  } catch (error) {
+    next(error);
   }
 };
 
-
-const getSingleTodo = async (req, res) => {
+/* ================================
+   GET SINGLE TODO
+================================ */
+const getSingleTodo = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Check valid Mongo ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        message: "Invalid Todo ID"
-      });
+      return res.status(400).json({ message: "Invalid Todo ID" });
     }
 
-    const todo = await Todo.findById(id);
+    const todo = await Todo.findOne({
+      _id: id,
+      user: req.user.id,
+    });
 
     if (!todo) {
-      return res.status(404).json({
-        message: "Todo not found"
-      });
+      return res.status(404).json({ message: "Todo not found" });
     }
 
-    res.status(200).json(todo);
-
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to fetch todo",
-      error: error.message
+    res.status(200).json({
+      success: true,
+      data: todo,
     });
+  } catch (error) {
+    next(error);
   }
 };
 
-const updateTodo = async (req, res) => {
+/* ================================
+   UPDATE TODO
+================================ */
+const updateTodo = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        message: "Invalid Todo ID"
-      });
+      return res.status(400).json({ message: "Invalid Todo ID" });
     }
 
-    const { title, description, completed } = req.body;
+    const allowedFields = [
+      "title",
+      "description",
+      "status",
+      "priority",
+      "category",
+      "tags",
+      "dueDate",
+      "reminder",
+      "isArchived",
+    ];
 
     const updateData = {};
 
-    if (title !== undefined) {
-      if (!title.trim()) {
-        return res.status(400).json({
-          message: "Title cannot be empty"
-        });
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
       }
-      updateData.title = title.trim();
-    }
+    });
 
-    if (description !== undefined) {
-      updateData.description = description.trim();
-    }
-
-    if (completed !== undefined) {
-      updateData.completed = completed;
-    }
-
-    const updated = await Todo.findOneAndUpdate(
-      { _id: id, user: req.user.id },
-      updateData,
-      {
-        returnDocument: "after",
-        runValidators: true
-      }
-    );
-
-    if (!updated) {
-      return res.status(404).json({
-        message: "Todo not found"
+    // Trim title if updating
+    if (updateData.title && !updateData.title.trim()) {
+      return res.status(400).json({
+        message: "Title cannot be empty",
       });
     }
 
-    res.status(200).json(updated);
+    if (updateData.title) {
+      updateData.title = updateData.title.trim();
+    }
 
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to update todo",
-      error: error.message
+    const updatedTodo = await Todo.findOneAndUpdate(
+      { _id: id, user: req.user.id },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!updatedTodo) {
+      return res.status(404).json({
+        message: "Todo not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updatedTodo,
     });
+  } catch (error) {
+    next(error);
   }
 };
 
-
-const deleteTodo = async (req, res) => {
+/* ================================
+   SOFT DELETE (Archive)
+================================ */
+const deleteTodo = async (req, res, next) => {
   try {
-    await Todo.findByIdAndDelete(req.params.id);
-    res.json({ message: "Todo Deleted" });
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Todo ID" });
+    }
+
+    const todo = await Todo.findOneAndUpdate(
+      { _id: id, user: req.user.id },
+      { isArchived: true },
+      { new: true }
+    );
+
+    if (!todo) {
+      return res.status(404).json({
+        message: "Todo not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Todo archived successfully",
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
+  }
+};
+
+/* ================================
+   HARD DELETE (Optional Admin Use)
+================================ */
+const permanentlyDeleteTodo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    await Todo.findOneAndDelete({
+      _id: id,
+      user: req.user.id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Todo permanently deleted",
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -142,5 +269,6 @@ module.exports = {
   getTodos,
   getSingleTodo,
   updateTodo,
-  deleteTodo
+  deleteTodo,
+  permanentlyDeleteTodo,
 };

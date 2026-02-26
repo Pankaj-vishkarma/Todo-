@@ -11,14 +11,14 @@ import ViewTodo from "./pages/ViewTodo";
 
 const App = () => {
   return (
-
-    
     <BrowserRouter>
       <Routes>
+
+        {/* Public Full Screen Pages */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* 🔐 Protected Routes */}
+        {/* Protected Full Screen Pages */}
         <Route
           path="/dashboard"
           element={
@@ -38,13 +38,13 @@ const App = () => {
         />
 
         <Route
-         path="/view/:id"
-         element={
+          path="/view/:id"
+          element={
             <ProtectedRoute>
               <ViewTodo />
             </ProtectedRoute>
-          } 
-         />
+          }
+        />
 
         <Route
           path="/edit/:id"
@@ -54,6 +54,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
       </Routes>
     </BrowserRouter>
   );

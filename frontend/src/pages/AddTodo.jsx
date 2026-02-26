@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import MatrixBackground from "../components/MatrixBackground";
 
 const AddTodo = () => {
   const [title, setTitle] = useState("");
@@ -11,6 +12,7 @@ const AddTodo = () => {
 
   const navigate = useNavigate();
 
+  /* ================= ADD TODO LOGIC (UNCHANGED) ================= */
   const handleAdd = async (e) => {
     e.preventDefault();
 
@@ -23,10 +25,10 @@ const AddTodo = () => {
       setLoading(true);
       setErrorMessage("");
 
-      await axiosInstance.post(
-        "/api/todos",
-        { title, description }
-      );
+      await axiosInstance.post("/api/todos", {
+        title,
+        description,
+      });
 
       navigate("/dashboard");
     } catch (error) {
@@ -37,72 +39,72 @@ const AddTodo = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-200 py-10">
+    <div className="relative min-h-screen bg-black overflow-x-hidden">
 
-      {/* Title */}
-      <h1 className="text-center text-4xl font-bold underline mb-4">
-        Todo App
-      </h1>
+      {/* MATRIX BACKGROUND */}
+      <MatrixBackground />
 
-      <h2 className="text-center text-2xl font-semibold mb-8">
-        Add New Todo
-      </h2>
+      {/* CONTENT */}
+      <div className="relative z-20 min-h-screen flex items-center justify-center px-4 sm:px-6 md:px-10 py-10">
 
-      {/* Card */}
-      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-10">
+        <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl border border-green-500/40 rounded-3xl p-6 sm:p-8 md:p-10 shadow-[0_0_40px_rgba(0,255,150,0.2)] transition-all duration-300 hover:scale-[1.01]">
 
-        {errorMessage && (
-          <div className="bg-red-100 text-red-600 p-3 rounded-lg mb-4 text-sm">
-            {errorMessage}
-          </div>
-        )}
+          <h1 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold text-green-400 font-mono mb-6 tracking-widest">
+            ADD NEW TASK
+          </h1>
 
-        <form onSubmit={handleAdd} className="space-y-6">
+          {errorMessage && (
+            <div className="bg-red-900/40 text-red-400 p-3 rounded-xl mb-6 text-sm border border-red-500/40 font-mono">
+              {errorMessage}
+            </div>
+          )}
 
-          {/* Title Input */}
-          <input
-            type="text"
-            placeholder="Enter Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full border border-black rounded-xl px-6 py-4 text-lg focus:outline-none"
-          />
+          <form onSubmit={handleAdd} className="space-y-6">
 
-          {/* Description Textarea */}
-          <textarea
-            rows="6"
-            placeholder="Enter Description..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full border border-black rounded-xl px-6 py-4 text-lg focus:outline-none"
-          ></textarea>
+            <input
+              type="text"
+              placeholder="Enter Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-black/50 border border-green-500/40 text-green-300 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 font-mono"
+            />
 
-          {/* Buttons */}
-          <div className="flex justify-center gap-8 pt-4">
+            <textarea
+              rows="6"
+              placeholder="Enter Description..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full bg-black/50 border border-green-500/40 text-green-300 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 font-mono resize-none"
+            ></textarea>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`flex items-center gap-3 px-10 py-4 text-lg rounded-xl text-white font-semibold ${loading
-                  ? "bg-green-400 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700"
+            <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-8 pt-4">
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={`flex items-center justify-center gap-3 px-6 sm:px-10 py-3 sm:py-4 text-base sm:text-lg rounded-xl font-semibold transition-all duration-300 ${
+                  loading
+                    ? "bg-green-800 cursor-not-allowed text-green-200"
+                    : "bg-green-500 text-black hover:bg-green-400 active:scale-[0.98] shadow-[0_0_20px_rgba(0,255,150,0.6)]"
                 }`}
-            >
-              <Plus size={22} />
-              {loading ? "Adding..." : "Add"}
-            </button>
+              >
+                <Plus size={20} />
+                {loading ? "ADDING..." : "ADD TASK"}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard")}
-              className="px-10 py-4 text-lg rounded-xl bg-gray-600 hover:bg-gray-700 text-white font-semibold"
-            >
-              Cancel
-            </button>
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard")}
+                className="px-6 sm:px-10 py-3 sm:py-4 text-base sm:text-lg rounded-xl bg-gray-800 hover:bg-gray-700 text-green-400 font-semibold border border-green-500/40 font-mono transition-all duration-300"
+              >
+                CANCEL
+              </button>
 
-          </div>
-        </form>
+            </div>
 
+          </form>
+
+        </div>
       </div>
     </div>
   );

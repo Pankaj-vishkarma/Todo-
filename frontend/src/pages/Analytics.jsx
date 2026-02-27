@@ -6,101 +6,143 @@ import { useNavigate } from "react-router-dom";
 const Analytics = () => {
   const navigate = useNavigate();
 
-  const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    pending: 0,
-  });
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axiosInstance.get("/api/todos?limit=1000");
-        const todos = res?.data?.data || [];
-
-        const completed = todos.filter(
-          (t) => t.status === "completed"
-        ).length;
-
-        setStats({
-          total: todos.length,
-          completed,
-          pending: todos.length - completed,
-        });
+        setLoading(true);
+        const res = await axiosInstance.get("/api/todos/analytics");
+        setStats(res?.data?.data || null);
       } catch (error) {
         console.error("Analytics error:", error);
+        setStats(null);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchData();
   }, []);
 
-  const completionRate =
-    stats.total === 0
-      ? 0
-      : Math.round((stats.completed / stats.total) * 100);
-
   return (
     <div className="relative h-screen bg-black overflow-hidden">
       <MatrixBackground />
 
-      <div className="relative z-20 h-full flex items-center justify-center px-4">
-        <div className="w-full max-w-4xl bg-black/70 backdrop-blur-xl border border-green-500/40 rounded-3xl p-5 md:p-6 shadow-[0_0_40px_rgba(0,255,150,0.2)]">
+      <div className="relative z-20 h-full max-w-7xl mx-auto px-4 py-6 flex flex-col">
 
-          <h1 className="text-center text-lg sm:text-xl md:text-2xl font-bold text-green-400 font-mono mb-6 tracking-widest">
-            ANALYTICS DASHBOARD
-          </h1>
+        <h1 className="text-center text-xl md:text-2xl font-bold text-green-400 font-mono mb-6 tracking-widest">
+          ANALYTICS DASHBOARD
+        </h1>
 
-          {/* STATS GRID */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center font-mono text-sm">
+        {loading ? (
+          <div className="flex flex-1 justify-center items-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-green-500 border-opacity-50"></div>
+          </div>
+        ) : stats ? (
+          <div className="flex-1 flex flex-col justify-between">
 
-            <div className="bg-black/60 border border-green-500/40 p-4 rounded-xl">
-              <p className="text-green-400">TOTAL TASKS</p>
-              <p className="text-green-300 text-xl mt-2">
-                {stats.total}
+            {/* ===== SUMMARY CARDS ===== */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <StatCard title="TOTAL" value={stats.total} />
+              <StatCard title="DONE" value={stats.completed} />
+              <StatCard title="PENDING" value={stats.total - stats.completed} />
+              <StatCard title="ARCHIVED" value={stats.archived} />
+            </div>
+
+            {/* ===== COMPLETION RATE ===== */}
+            <div className="bg-black/60 border border-green-500/40 rounded-xl p-4 mb-6 shadow-md">
+              <p className="text-green-400 text-xs font-mono text-center mb-2">
+                COMPLETION RATE
+              </p>
+
+              <div className="w-full bg-black/40 rounded-full h-3 overflow-hidden">
+                <div
+                  className="bg-green-500 h-3 transition-all duration-700"
+                  style={{ width: `${stats.completionRate}%` }}
+                ></div>
+              </div>
+
+              <p className="text-green-300 text-center mt-2 font-mono text-lg">
+                {stats.completionRate}%
               </p>
             </div>
 
-            <div className="bg-black/60 border border-green-500/40 p-4 rounded-xl">
-              <p className="text-green-400">COMPLETED</p>
-              <p className="text-green-300 text-xl mt-2">
-                {stats.completed}
-              </p>
+            {/* ===== BREAKDOWN ===== */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 overflow-hidden">
+
+              <BreakdownCard
+                title="STATUS"
+                data={stats.statusBreakdown}
+              />
+
+              <BreakdownCard
+                title="PRIORITY"
+                data={stats.priorityBreakdown}
+              />
+
+              <BreakdownCard
+                title="CATEGORY"
+                data={stats.categoryBreakdown}
+              />
+
             </div>
-
-            <div className="bg-black/60 border border-green-500/40 p-4 rounded-xl">
-              <p className="text-green-400">PENDING</p>
-              <p className="text-green-300 text-xl mt-2">
-                {stats.pending}
-              </p>
-            </div>
-
           </div>
-
-          {/* COMPLETION RATE */}
-          <div className="mt-6 bg-black/60 border border-green-500/40 p-5 rounded-xl text-center font-mono">
-            <p className="text-green-400 text-sm">
-              COMPLETION RATE
-            </p>
-            <p className="text-green-300 text-2xl mt-3">
-              {completionRate}%
-            </p>
+        ) : (
+          <div className="flex flex-1 justify-center items-center text-red-400">
+            Failed to load analytics
           </div>
+        )}
 
-          {/* BACK BUTTON */}
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="w-full md:w-auto px-6 py-2 text-sm rounded-lg bg-green-500 text-black font-semibold hover:bg-green-400 transition"
-            >
-              BACK TO PANEL
-            </button>
-          </div>
-
+        {/* BACK BUTTON */}
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="px-6 py-2 text-sm rounded-lg bg-green-500 text-black font-semibold hover:bg-green-400 transition"
+          >
+            BACK
+          </button>
         </div>
+
       </div>
     </div>
   );
 };
+
+/* ================= SMALL COMPONENTS ================= */
+
+const StatCard = ({ title, value }) => (
+  <div className="bg-black/60 border border-green-500/40 p-4 rounded-xl shadow-sm text-center hover:shadow-green-500/20 transition">
+    <p className="text-green-400 text-xs font-mono">{title}</p>
+    <p className="text-green-300 text-xl mt-1 font-bold">{value}</p>
+  </div>
+);
+
+const BreakdownCard = ({ title, data }) => (
+  <div className="bg-black/60 border border-green-500/40 p-4 rounded-xl shadow-sm flex flex-col">
+    <h3 className="text-green-400 text-xs font-mono mb-3 text-center">
+      {title}
+    </h3>
+
+    <div className="flex-1 overflow-y-auto pr-1">
+      {data && data.length > 0 ? (
+        data.map((item, index) => (
+          <div
+            key={index}
+            className="flex justify-between text-green-300 text-sm py-1 border-b border-green-500/10 last:border-none"
+          >
+            <span className="capitalize truncate">{item._id}</span>
+            <span>{item.count}</span>
+          </div>
+        ))
+      ) : (
+        <p className="text-center text-green-300/60 text-sm">
+          No Data
+        </p>
+      )}
+    </div>
+  </div>
+);
 
 export default Analytics;

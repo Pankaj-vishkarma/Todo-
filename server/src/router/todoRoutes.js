@@ -10,6 +10,7 @@ const {
   updateTodo,
   deleteTodo,
   permanentlyDeleteTodo,
+  getTodoAnalytics
 } = require("../controller/todoCtrl");
 
 const {
@@ -35,6 +36,12 @@ router.post(
    GET ALL TODOS (Filter + Pagination)
 ================================ */
 router.get("/", authMiddleware, getTodos);
+
+router.get(
+  "/analytics",
+  authMiddleware,
+  getTodoAnalytics
+);
 
 /* ================================
    HARD DELETE (Permanent)
@@ -65,6 +72,19 @@ router.get(
 router.put(
   "/:id",
   authMiddleware,
+  validateTodoId,
+  validateUpdateTodo,
+  handleValidation,
+  updateTodo
+);
+
+/* ================================
+    PATCH TODO (Partial Update)
+================================ */
+router.patch(
+  "/:id",
+  authMiddleware,
+  validateTodoId,
   validateUpdateTodo,
   handleValidation,
   updateTodo

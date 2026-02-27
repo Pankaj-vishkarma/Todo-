@@ -1,5 +1,7 @@
 const app = require('./app.js');
+const validateEnv = require("./config/validateEnv");
 
+validateEnv();
 
 const PORT = process.env.PORT || 1234;
 

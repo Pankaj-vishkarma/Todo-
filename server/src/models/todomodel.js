@@ -78,6 +78,7 @@ todoSchema.index({ user: 1, status: 1 });
 todoSchema.index({ user: 1, priority: 1 });
 todoSchema.index({ user: 1, category: 1 });
 todoSchema.index({ title: "text", description: "text" });
+todoSchema.index({ user: 1, createdAt: -1 });
 
 /* ================================
    PRE SAVE HOOK

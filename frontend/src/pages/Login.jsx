@@ -30,7 +30,7 @@ const Login = () => {
         password,
       });
 
-      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("token", res.data.accessToken);
       navigate("/dashboard");
     } catch (err) {
       if (err.response && err.response.data.message) {

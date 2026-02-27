@@ -3,6 +3,7 @@ import axiosInstance from "../utils/axiosInstance";
 import { User, ChevronDown } from "lucide-react";
 import { useRef } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   Plus,
   Eye,
@@ -40,17 +41,19 @@ const Dashboard = () => {
           limit: 6,
           search,
           priority: priorityFilter,
-          archived,
+          archived: archived ? "true" : "false",
           status: filter !== "all" ? filter : undefined,
         },
       });
 
-      const data = res?.data || {};
-      setTodos(data?.data || []);
-      setTotalPages(data?.pages || 1);
+      const response = res?.data || {};
+
+      setTodos(response?.data || []);
+      setTotalPages(response?.meta?.pages || 1);
     } catch (err) {
       console.error(err);
       setError("Failed to load todos");
+      toast.error("Failed to load todos");
     } finally {
       setLoading(false);
     }
@@ -65,38 +68,48 @@ const Dashboard = () => {
   }, [page, search, priorityFilter, archived, filter]);
 
   useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target)
-    ) {
-      setDropdownOpen(false);
-    }
-  };
+    const handleClickOutside = (event) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setDropdownOpen(false);
+      }
+    };
 
-  document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   /* ================= LOGOUT ================= */
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "/";
+  const handleLogout = async () => {
+    try {
+      await axiosInstance.post("/api/users/logout");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.replace("/");
+    }
   };
 
   /* ================= TOGGLE ================= */
   const handleToggle = async (id, currentStatus) => {
     try {
+
       const newStatus =
-        currentStatus === "completed" ? "pending" : "completed";
+        currentStatus === "completed"
+          ? "pending"
+          : "completed";
 
       await axiosInstance.put(`/api/todos/${id}`, {
         status: newStatus,
       });
+      toast.success("Status updated");
 
       fetchTodos();
     } catch (error) {
@@ -107,7 +120,20 @@ const Dashboard = () => {
   /* ================= ARCHIVE ================= */
   const handleDelete = async (id) => {
     try {
-      await axiosInstance.delete(`/api/todos/${id}`);
+      if (!window.confirm(
+        archived
+          ? "Permanently delete this task?"
+          : "Archive this task?"
+      )) return;
+
+      if (archived) {
+        await axiosInstance.delete(`/api/todos/permanent/${id}`);
+        toast.success("Todo permanently deleted");
+      } else {
+        await axiosInstance.delete(`/api/todos/${id}`);
+        toast.success("Todo archived successfully");
+      }
+
       fetchTodos();
     } catch (error) {
       console.error(error);
@@ -220,13 +246,16 @@ const Dashboard = () => {
 
           {/* STATUS FILTER */}
           <div className="flex gap-6 mt-4 text-sm font-mono">
-            {["all", "pending", "completed"].map((type) => (
+            {["all", "pending", "in-progress", "completed"].map((type) => (
               <button
                 key={type}
-                onClick={() => setFilter(type)}
+                onClick={() => {
+                  setPage(1);
+                  setFilter(type);
+                }}
                 className={`uppercase transition ${filter === type
-                    ? "text-green-400 font-bold"
-                    : "text-green-200 hover:text-green-400"
+                  ? "text-green-400 font-bold"
+                  : "text-green-200 hover:text-green-400"
                   }`}
               >
                 {type}
@@ -237,21 +266,39 @@ const Dashboard = () => {
 
         {/* LOADING */}
         {loading && (
-          <div className="text-center text-green-400 font-mono">
-            Loading...
+          <div className="flex justify-center mt-20">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-green-500 border-opacity-50"></div>
           </div>
         )}
 
-        {error && (
-          <div className="text-center text-red-500 font-mono">
+        {error && !loading && (
+          <div className="text-center text-red-500 font-mono mt-4">
             {error}
           </div>
         )}
 
         {/* TASK GRID */}
         {!loading && todos.length === 0 ? (
-          <div className="text-center mt-20 text-green-400 font-mono text-sm">
-            NO DATA FOUND
+          <div className="text-center mt-20 text-green-400 font-mono">
+
+            <div className="mb-4 text-4xl">📭</div>
+
+            <h3 className="text-lg mb-2 font-semibold">
+              No Tasks Found
+            </h3>
+
+            <p className="text-sm text-green-300/70 mb-6">
+              Try adjusting filters or create a new task.
+            </p>
+
+            <Link
+              to="/add"
+              className="inline-flex items-center gap-2 bg-green-500 text-black px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-400 transition"
+            >
+              <Plus size={14} />
+              Create Task
+            </Link>
+
           </div>
         ) : (
           <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -265,38 +312,63 @@ const Dashboard = () => {
                 <div className="flex items-start gap-3 mb-4">
                   <input
                     type="checkbox"
+                    disabled={archived}
                     checked={todo.status === "completed"}
-                    onChange={() =>
-                      handleToggle(todo._id, todo.status)
-                    }
+                    onChange={() => handleToggle(todo._id, todo.status)}
                     className="w-4 h-4 accent-green-500 mt-1"
                   />
 
                   <div>
                     <p
                       className={`font-semibold text-sm ${todo.status === "completed"
-                          ? "line-through text-green-600"
-                          : "text-green-300"
+                        ? "line-through text-green-600"
+                        : "text-green-300"
                         }`}
                     >
                       {todo.title}
                     </p>
+
+                    {/* ✅ DUE DATE */}
+                    {todo.dueDate && (
+                      <p className="text-xs text-green-400/70 mt-1">
+                        Due: {new Date(todo.dueDate).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center">
 
-                  <span
-                    className={`text-xs px-2 py-1 rounded-md ${todo.priority === "high"
+                  {/* LEFT SIDE BADGES */}
+                  <div className="flex gap-2 items-center">
+
+                    {/* STATUS BADGE */}
+                    <span
+                      className={`text-xs px-2 py-1 rounded-md ${todo.status === "completed"
+                        ? "bg-green-900/40 text-green-400"
+                        : todo.status === "in-progress"
+                          ? "bg-yellow-900/40 text-yellow-400"
+                          : "bg-red-900/40 text-red-400"
+                        }`}
+                    >
+                      {todo.status}
+                    </span>
+
+                    {/* PRIORITY BADGE */}
+                    <span
+                      className={`text-xs px-2 py-1 rounded-md ${todo.priority === "high"
                         ? "bg-red-900/40 text-red-400"
                         : todo.priority === "medium"
                           ? "bg-yellow-900/40 text-yellow-400"
                           : "bg-green-900/40 text-green-400"
-                      }`}
-                  >
-                    {todo.priority}
-                  </span>
+                        }`}
+                    >
+                      {todo.priority}
+                    </span>
 
+                  </div>
+
+                  {/* ACTION BUTTONS */}
                   <div className="flex gap-2">
                     <Link
                       to={`/view/${todo._id}`}
@@ -327,27 +399,31 @@ const Dashboard = () => {
         )}
 
         {/* PAGINATION */}
-        <div className="flex justify-center items-center gap-6 mt-10 text-sm font-mono">
-          <button
-            disabled={page === 1}
-            onClick={() => setPage((prev) => prev - 1)}
-            className="px-4 py-2 bg-gray-800 text-green-400 rounded-lg disabled:opacity-40 hover:bg-gray-700 transition"
-          >
-            PREV
-          </button>
+        {!loading && totalPages > 1 && (
+          <div className="flex justify-center items-center gap-6 mt-10 text-sm font-mono">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              className="px-4 py-2 bg-gray-800 text-green-400 rounded-lg disabled:opacity-40 hover:bg-gray-700 transition"
+            >
+              PREV
+            </button>
 
-          <span className="text-green-400">
-            Page {page} of {totalPages}
-          </span>
+            <span className="text-green-400">
+              Page {page} of {totalPages}
+            </span>
 
-          <button
-            disabled={page === totalPages}
-            onClick={() => setPage((prev) => prev + 1)}
-            className="px-4 py-2 bg-gray-800 text-green-400 rounded-lg disabled:opacity-40 hover:bg-gray-700 transition"
-          >
-            NEXT
-          </button>
-        </div>
+            <button
+              disabled={page === totalPages}
+              onClick={() =>
+                setPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              className="px-4 py-2 bg-gray-800 text-green-400 rounded-lg disabled:opacity-40 hover:bg-gray-700 transition"
+            >
+              NEXT
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

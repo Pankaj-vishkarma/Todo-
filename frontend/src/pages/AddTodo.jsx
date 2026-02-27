@@ -3,6 +3,7 @@ import axiosInstance from "../utils/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import MatrixBackground from "../components/MatrixBackground";
+import { toast } from "react-toastify";
 
 const AddTodo = () => {
   const [title, setTitle] = useState("");
@@ -13,39 +14,88 @@ const AddTodo = () => {
   const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [reminder, setReminder] = useState("");
 
   const navigate = useNavigate();
 
   const handleAdd = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
     if (!title.trim()) {
       setErrorMessage("Title is required");
+      toast.error("Title is required");
       return;
+    }
+
+    if (title.trim().length < 3) {
+      setErrorMessage("Title must be at least 3 characters");
+      toast.error("Title must be at least 3 characters");
+      return;
+    }
+
+    if (dueDate) {
+      const selectedDate = new Date(dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        setErrorMessage("Due date cannot be in the past");
+        toast.error("Due date cannot be in the past");
+        return;
+      }
+    }
+
+    if (reminder && dueDate) {
+      const reminderDate = new Date(reminder);
+      const due = new Date(dueDate);
+
+      if (reminderDate > due) {
+        setErrorMessage("Reminder cannot be after due date");
+        toast.error("Reminder cannot be after due date");
+        return;
+      }
     }
 
     try {
       setLoading(true);
       setErrorMessage("");
 
-      await axiosInstance.post("/api/todos", {
+      const payload = {
         title: title.trim(),
-        description: description.trim(),
+        description: description?.trim() || "",
         priority,
-        category: category.trim(),
+        category: category?.trim() || "general",
         tags: tags
-          ? tags.split(",").map((tag) => tag.trim())
+          ? tags.split(",").map((tag) => tag.trim()).filter(Boolean)
           : [],
-        dueDate: dueDate || null,
         status: "pending",
-      });
+      };
 
-      navigate("/dashboard");
+      if (reminder) {
+        payload.reminder = reminder;
+      }
+
+      // Only add dueDate if exists
+      if (dueDate) {
+        payload.dueDate = dueDate;
+      }
+
+      await axiosInstance.post("/api/todos", payload);
+
+      toast.success("Task added successfully 🎉");
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 800);
+
     } catch (error) {
       console.error(error);
-      setErrorMessage(
-        error?.response?.data?.message || "Failed to add todo."
-      );
+      const message =
+        error?.response?.data?.message || "Failed to add todo.";
+
+      setErrorMessage(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -68,80 +118,126 @@ const AddTodo = () => {
             </div>
           )}
 
-          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* TITLE */}
-            <input
-              type="text"
-              placeholder="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
-            />
+            <div className="flex flex-col">
+              <label className="text-xs text-green-400 mb-1 font-mono">
+                Task Title *
+              </label>
+              <input
+                type="text"
+                placeholder="Enter task title"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (errorMessage) setErrorMessage("");
+                }}
+                className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+              />
+            </div>
 
             {/* CATEGORY */}
-            <input
-              type="text"
-              placeholder="Category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
-            />
+            <div className="flex flex-col">
+              <label className="text-xs text-green-400 mb-1 font-mono">
+                Category
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Work, Personal"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+              />
+            </div>
 
             {/* DESCRIPTION */}
-            <textarea
-              rows="3"
-              placeholder="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="md:col-span-2 bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono resize-none"
-            />
+            <div className="md:col-span-2 flex flex-col">
+              <label className="text-xs text-green-400 mb-1 font-mono">
+                Description
+              </label>
+              <textarea
+                rows="3"
+                placeholder="Write task details..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono resize-none"
+              />
+            </div>
 
             {/* PRIORITY */}
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+            <div className="flex flex-col">
+              <label className="text-xs text-green-400 mb-1 font-mono">
+                Priority Level
+              </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
 
             {/* DUE DATE */}
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
-            />
+            <div className="flex flex-col">
+              <label className="text-xs text-green-400 mb-1 font-mono">
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+              />
+            </div>
+
+            {/* REMINDER */}
+            <div className="flex flex-col">
+              <label className="text-xs text-green-400 mb-1 font-mono">
+                Reminder Date (Optional)
+              </label>
+              <input
+                type="date"
+                value={reminder}
+                onChange={(e) => setReminder(e.target.value)}
+                className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+              />
+            </div>
 
             {/* TAGS */}
-            <input
-              type="text"
-              placeholder="Tags (comma separated)"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              className="md:col-span-2 bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
-            />
+            <div className="md:col-span-2 flex flex-col">
+              <label className="text-xs text-green-400 mb-1 font-mono">
+                Tags
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. frontend, urgent, client"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                className="bg-black/50 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+              />
+            </div>
 
             {/* BUTTONS */}
-            <div className="md:col-span-2 flex gap-3 mt-2">
+            <div className="md:col-span-2 flex gap-3 mt-4">
               <button
                 type="submit"
                 disabled={loading}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm rounded-lg font-semibold transition ${
-                  loading
+                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm rounded-lg font-semibold transition ${loading
                     ? "bg-green-800 text-green-200"
                     : "bg-green-500 text-black hover:bg-green-400"
-                }`}
+                  }`}
               >
                 <Plus size={16} />
-                {loading ? "ADDING..." : "ADD"}
+                {loading ? "ADDING..." : "ADD TASK"}
               </button>
 
               <button
                 type="button"
+                disabled={loading}
                 onClick={() => navigate("/dashboard")}
                 className="flex-1 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-green-400 border border-green-500/40 font-mono transition"
               >

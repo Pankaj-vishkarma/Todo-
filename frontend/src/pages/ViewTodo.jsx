@@ -11,13 +11,9 @@ const ViewTodo = () => {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
-  /* ================= FETCH TODO ================= */
   useEffect(() => {
     const fetchTodo = async () => {
       try {
-        setLoading(true);
-        setErrorMessage("");
-
         const res = await axiosInstance.get(`/api/todos/${id}`);
         const data = res?.data?.data;
 
@@ -28,7 +24,6 @@ const ViewTodo = () => {
 
         setTodo(data);
       } catch (error) {
-        console.error(error);
         setErrorMessage("Failed to load todo.");
       } finally {
         setLoading(false);
@@ -38,24 +33,22 @@ const ViewTodo = () => {
     fetchTodo();
   }, [id]);
 
-  /* ================= LOADING ================= */
   if (loading) {
     return (
-      <div className="relative h-screen bg-black overflow-hidden">
+      <div className="relative min-h-screen bg-black overflow-hidden">
         <MatrixBackground />
-        <div className="relative z-20 h-full flex items-center justify-center text-green-400 font-mono text-sm">
+        <div className="relative z-20 flex items-center justify-center h-screen text-green-400 font-mono text-sm">
           LOADING DATA...
         </div>
       </div>
     );
   }
 
-  /* ================= ERROR ================= */
   if (errorMessage) {
     return (
-      <div className="relative h-screen bg-black overflow-hidden">
+      <div className="relative min-h-screen bg-black overflow-hidden">
         <MatrixBackground />
-        <div className="relative z-20 h-full flex items-center justify-center text-red-400 font-mono text-sm text-center px-4">
+        <div className="relative z-20 flex items-center justify-center h-screen text-red-400 font-mono text-sm text-center px-4">
           {errorMessage}
         </div>
       </div>
@@ -63,17 +56,17 @@ const ViewTodo = () => {
   }
 
   return (
-    <div className="relative h-screen bg-black overflow-hidden">
+    <div className="relative min-h-screen bg-black overflow-hidden">
       <MatrixBackground />
 
-      <div className="relative z-20 h-full flex items-center justify-center px-4">
+      <div className="relative z-20 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-4xl bg-black/70 backdrop-blur-xl border border-green-500/40 rounded-3xl p-5 md:p-6 shadow-[0_0_40px_rgba(0,255,150,0.2)]">
 
-          <h1 className="text-center text-lg sm:text-xl md:text-2xl font-bold text-green-400 font-mono mb-4 tracking-widest">
+          <h1 className="text-center text-lg sm:text-xl md:text-2xl font-bold text-green-400 font-mono mb-6 tracking-widest">
             TASK DETAILS
           </h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 font-mono text-sm">
 
             {/* TITLE */}
             <div className="md:col-span-2">
@@ -94,33 +87,29 @@ const ViewTodo = () => {
             {/* STATUS */}
             <div>
               <p className="text-green-400 mb-1">STATUS</p>
-              <p
-                className={`${
-                  todo.status === "completed"
-                    ? "text-green-500"
-                    : todo.status === "in-progress"
-                    ? "text-yellow-400"
-                    : "text-red-400"
-                }`}
-              >
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                todo.status === "completed"
+                  ? "bg-green-900/40 text-green-400"
+                  : todo.status === "in-progress"
+                  ? "bg-yellow-900/40 text-yellow-400"
+                  : "bg-red-900/40 text-red-400"
+              }`}>
                 {todo.status?.toUpperCase()}
-              </p>
+              </span>
             </div>
 
             {/* PRIORITY */}
             <div>
               <p className="text-green-400 mb-1">PRIORITY</p>
-              <p
-                className={`${
-                  todo.priority === "high"
-                    ? "text-red-500"
-                    : todo.priority === "medium"
-                    ? "text-yellow-400"
-                    : "text-green-400"
-                }`}
-              >
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                todo.priority === "high"
+                  ? "bg-red-900/40 text-red-400"
+                  : todo.priority === "medium"
+                  ? "bg-yellow-900/40 text-yellow-400"
+                  : "bg-green-900/40 text-green-400"
+              }`}>
                 {todo.priority?.toUpperCase()}
-              </p>
+              </span>
             </div>
 
             {/* DUE DATE */}
@@ -130,6 +119,32 @@ const ViewTodo = () => {
                 {todo.dueDate
                   ? new Date(todo.dueDate).toLocaleDateString()
                   : "No due date"}
+              </p>
+            </div>
+
+            {/* REMINDER */}
+            <div>
+              <p className="text-green-400 mb-1">REMINDER</p>
+              <p className="text-green-300">
+                {todo.reminder
+                  ? new Date(todo.reminder).toLocaleDateString()
+                  : "No reminder set"}
+              </p>
+            </div>
+
+            {/* ARCHIVE STATUS */}
+            <div>
+              <p className="text-green-400 mb-1">ARCHIVED</p>
+              <p className={todo.isArchived ? "text-red-400" : "text-green-400"}>
+                {todo.isArchived ? "YES" : "NO"}
+              </p>
+            </div>
+
+            {/* CREATED AT */}
+            <div>
+              <p className="text-green-400 mb-1">CREATED</p>
+              <p className="text-green-300">
+                {new Date(todo.createdAt).toLocaleDateString()}
               </p>
             </div>
 
@@ -145,7 +160,7 @@ const ViewTodo = () => {
             <div className="md:col-span-2">
               <p className="text-green-400 mb-1">TAGS</p>
               <div className="flex flex-wrap gap-2">
-                {todo.tags && todo.tags.length > 0 ? (
+                {todo.tags?.length ? (
                   todo.tags.map((tag, index) => (
                     <span
                       key={index}
@@ -155,16 +170,14 @@ const ViewTodo = () => {
                     </span>
                   ))
                 ) : (
-                  <p className="text-green-300">
-                    No tags added.
-                  </p>
+                  <p className="text-green-300">No tags added.</p>
                 )}
               </div>
             </div>
 
           </div>
 
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-8">
             <button
               onClick={() => navigate("/dashboard")}
               className="w-full md:w-auto px-6 py-2 text-sm rounded-lg bg-green-500 text-black font-semibold hover:bg-green-400 transition"
